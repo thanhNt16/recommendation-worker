@@ -1,0 +1,12 @@
+Werkzeug
+implicit
+Flask
+numpy
+gevent
+pillow
+pandas
+numpy
+scipy
+sklearn
+pymongo
+pika
