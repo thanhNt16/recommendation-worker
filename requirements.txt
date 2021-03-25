@@ -10,3 +10,4 @@ scipy
 sklearn
 pymongo
 pika
+scikit-surprise
