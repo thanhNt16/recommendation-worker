@@ -8,6 +8,6 @@ pandas
 numpy
 scipy
 sklearn
-pymongo
+pymongo[srv]
 pika
 scikit-surprise
