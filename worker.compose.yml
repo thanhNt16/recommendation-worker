@@ -2,5 +2,8 @@ version: "3.3"
 
 services:
   worker:
-    image: harryng/worker
+    image: harryng/gr-worker
+    restart: on-failure
+    ports: 
+     - "5000:5000"
     
