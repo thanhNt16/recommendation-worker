@@ -1,0 +1,12 @@
+version: "3.3"
+
+services:
+  trainer:
+    image: harryng/gr-trainer:20210417
+    restart: on-failure
+    ports: 
+     - "5001:5001"
+    volumes:
+     - "../models:/app/models"
+  
+    

@@ -11,3 +11,4 @@ sklearn
 pymongo[srv]
 pika
 scikit-surprise
+torch
