@@ -5,7 +5,7 @@ services:
     image: harryng/gr-trainer:20210417
     restart: on-failure
     ports: 
-     - "5001:5001"
+     - "15001:15001"
     volumes:
      - "../models:/app/models"
   

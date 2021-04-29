@@ -12,3 +12,4 @@ pymongo[srv]
 pika
 scikit-surprise
 torch
+matplotlib

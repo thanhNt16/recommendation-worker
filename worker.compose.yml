@@ -2,10 +2,10 @@ version: "3.3"
 
 services:
   worker:
-    image: harryng/gr-worker:20210417
+    image: harryng/gr-worker:20210429
     restart: on-failure
     ports: 
-     - "5000:5000"
+     - "15000:15000"
     volumes:
      - "../models:/app/models"
   

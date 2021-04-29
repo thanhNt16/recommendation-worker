@@ -18,10 +18,13 @@ from train_data import train_data
 # RabbitMQ
 import pika
 from publisher import Publisher
+import matplotlib.pyplot as plt
 
 #sklearn
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
+from sklearn.cluster import KMeans
+
 import implicit
 
 from surprise import Dataset
@@ -318,13 +321,49 @@ def index():
     try:
         db = getDb()
         if (db):
+            contents = db.contents
+            # customer_id = request.args.get('customer_id', default='')
+            # # item_id = request.args.get('item_id', default='')
+            # top = request.args.get('top', default=10)
+            # # product = contents.find_one({'itemId': item_id})
+
+            # data = pd.DataFrame(
+            #         list(contents.find({'customer': ObjectId(customer_id)})))
+            # tf = TfidfVectorizer(analyzer='word',
+            #                      ngram_range=(1, 3),
+            #                      min_df=0,
+            #                      stop_words=None)
+            # matrix = tf.fit_transform(data['content'])
+            # model = KMeans(n_clusters=8, init='k-means++', max_iter=500, n_init=15)
+            # kmeans = model.fit(matrix)
+
+            # # print("Top terms per cluster:", label)
+            # # order_centroids = model.cluster_centers_.argsort()[:, ::-1]
+            # # terms = tf.get_feature_names()
+            # # for i in range(8):
+            # #     print("Cluster %d:" % i),
+            # #     for ind in order_centroids[i, :15]:
+            # #         print(' %s' % terms[ind]),
+            # #     print
+            # plt.scatter(kmeans.cluster_centers_[:,0] ,kmeans.cluster_centers_[:,1], color='black')
+            # plt.savefig("kmean.png")
+            return "recommedation api"
+
+    except Exception as e:
+        return "Error in " + str(e)
+@app.route('/popular', methods=['GET'])
+def popular():
+    try:
+        db = getDb()
+        if (db):
+            top = request.args.get('top', default=10)
             sequence_collection = db.sequences
             train_data = data = pd.DataFrame(list(sequence_collection.find(
                 {})))
             popular_model = popularity_recommender_py()
             popular_model.create(train_data, 'itemId', 'feedBack')
-            list_items = popular_model.recommend(top=10)
-            return {'data': {'popular_items': list_items, 'top': 10}}
+            list_items = popular_model.recommend(top=int(top))
+            return {'data': {'popular_items': list_items, 'top': str(top)}}
     except Exception as e:
         return "Error in " + str(e)
 
@@ -581,5 +620,5 @@ if __name__ == '__main__':
     # thread.start()
 
     # Serve the app with gevent
-    http_server = WSGIServer(('0.0.0.0', 5000), app)
+    http_server = WSGIServer(('0.0.0.0', 15000), app)
     http_server.serve_forever()
