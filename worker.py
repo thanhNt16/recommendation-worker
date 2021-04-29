@@ -262,7 +262,7 @@ if __name__ == '__main__':
     # connect rabbitmq
 
     try:
-        publisher = Publisher(host='13.67.37.61',
+        publisher = Publisher(host='167.99.68.118',
                               username='rabbitmq',
                               password='rabbitmq',
                               queue=STATUS_QUEUE,
