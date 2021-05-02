@@ -375,11 +375,14 @@ def recommendContent():
             db = getDb()
             if (db):
                 contents = db.contents
-                customer_id = request.args.get('customer_id', default='')
-                item_id = request.args.get('item_id', default='')
+                customer_id = request.args.get('customer_id', default=None)
+                item_id = request.args.get('item_id', default=None)
                 top = request.args.get('top', default=10)
                 product = contents.find_one({'itemId': item_id})
-
+                if (item_id == None):
+                    return "Error. Not found item_id"
+                if (customer_id == None):
+                    return "Error. Not found customer_id"
                 data = pd.DataFrame(
                     list(contents.find({'customer': ObjectId(customer_id)})))
 
@@ -391,12 +394,16 @@ def recommendContent():
                 idx = indices[product['content']]
 
                 sim_scores = list(enumerate(cosine_similarities[idx]))
+
                 sim_scores = sorted(sim_scores,
                                     key=lambda x: x[1],
                                     reverse=True)
+
                 sim_scores = sim_scores[1:int(top) + 1]
                 course_indices = [i[0] for i in sim_scores]
                 result = course_title.iloc[course_indices].to_dict('records')
+                # result = []
+                print(result, course_indices)
                 return {
                     'data': {
                         'current_product': {
