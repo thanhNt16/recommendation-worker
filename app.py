@@ -56,6 +56,7 @@ train_dict = dict()
 # Declare a flask app
 app = Flask(__name__)
 CORS(app)
+
 # Constant
 # DUMPED_MODEL = 'models/'
 # JOB_QUEUE = 'job_queue'
@@ -349,10 +350,14 @@ def index():
             # #     print
             # plt.scatter(kmeans.cluster_centers_[:,0] ,kmeans.cluster_centers_[:,1], color='black')
             # plt.savefig("kmean.png")
-            return "recommedation api"
+            response = jsonify(message="recommedation api")
+            response.headers.add("Access-Control-Allow-Origin", "*")
+            return response
 
     except Exception as e:
         return "Error in " + str(e)
+
+
 @app.route('/popular', methods=['GET'])
 def popular():
     try:
@@ -365,7 +370,14 @@ def popular():
             popular_model = popularity_recommender_py()
             popular_model.create(train_data, 'itemId', 'feedBack')
             list_items = popular_model.recommend(top=int(top))
-            return {'data': {'popular_items': list_items, 'top': str(top)}}
+            # response
+            response = jsonify(data={
+                'popular_items': list_items,
+                'top': str(top)
+            })
+            response.headers.add("Access-Control-Allow-Origin", "*")
+            return response
+            # return {'data': {'popular_items': list_items, 'top': str(top)}}
     except Exception as e:
         return "Error in " + str(e)
 
@@ -406,16 +418,27 @@ def recommendContent():
                 result = course_title.iloc[course_indices].to_dict('records')
                 # result = []
                 print(result, course_indices)
-                return {
-                    'data': {
+                response = jsonify(
+                    data={
                         'current_product': {
                             'id': product['itemId'],
                             'content': product['content']
                         },
                         'similar_products': result,
                         'top': top
-                    }
-                }
+                    })
+                response.headers.add("Access-Control-Allow-Origin", "*")
+                return response
+                # return {
+                #     'data': {
+                #         'current_product': {
+                #             'id': product['itemId'],
+                #             'content': product['content']
+                #         },
+                #         'similar_products': result,
+                #         'top': top
+                #     }
+                # }
 
             else:
                 return "Database not found"
@@ -464,7 +487,6 @@ def recommend_collaborative_implicit():
                                           N=int(top),
                                           filter_already_liked_items=False)
             result = []
-            print('rec', recommended)
             for item in recommended:
                 idx, score = item
                 print('err', data[data.item_id == idx])
@@ -474,15 +496,26 @@ def recommend_collaborative_implicit():
                     'score':
                     str(score)
                 })
-            return {
-                'data': {
+
+            response = jsonify(
+                data={
                     'current_user': {
                         'id': str(user_id),
                     },
                     'suggestion': result,
                     'top': top
-                }
-            }
+                })
+            response.headers.add("Access-Control-Allow-Origin", "*")
+            return response
+            # return {
+            #     'data': {
+            #         'current_user': {
+            #             'id': str(user_id),
+            #         },
+            #         'suggestion': result,
+            #         'top': top
+            #     }
+            # }
         else:
             return "Database not found"
     # except Exception as e:
@@ -533,15 +566,26 @@ def recommend_collaborative_explicit():
                         'itemId': iid,
                         'prediction_rating': pred_ratings[idx]
                     })
-                return {
-                    'data': {
+
+                response = jsonify(
+                    data={
                         'current_user': {
                             'id': user_id,
                         },
                         'suggestion': result,
                         'top': top
-                    }
-                }
+                    })
+                response.headers.add("Access-Control-Allow-Origin", "*")
+                return response
+                # return {
+                #     'data': {
+                #         'current_user': {
+                #             'id': user_id,
+                #         },
+                #         'suggestion': result,
+                #         'top': top
+                #     }
+                # }
             else:
                 return "Database not found"
         except Exception as e:
@@ -594,16 +638,26 @@ def recommend_sequence():
                 result.append({'id': int(item), 'score': int(scores[idx])})
 
             result = sorted(result, key=lambda k: k['score'])
-
-            return {
-                'data': {
+            
+            response = jsonify(
+                data={
                     'current_user': {
                         'id': user_id,
                     },
                     'suggestion': result[-int(top):],
                     'top': int(top)
-                }
-            }
+                })
+            response.headers.add("Access-Control-Allow-Origin", "*")
+            return response
+            # return {
+            #     'data': {
+            #         'current_user': {
+            #             'id': user_id,
+            #         },
+            #         'suggestion': result[-int(top):],
+            #         'top': int(top)
+            #     }
+            # }
 
 
 if __name__ == '__main__':
