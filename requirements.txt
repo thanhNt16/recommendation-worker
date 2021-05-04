@@ -13,3 +13,4 @@ pika
 scikit-surprise
 torch
 matplotlib
+flask-cors

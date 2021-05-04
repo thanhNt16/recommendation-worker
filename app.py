@@ -11,6 +11,8 @@ import urllib.parse
 from flask import Flask, redirect, url_for, request, render_template, Response, jsonify, redirect
 from werkzeug.utils import secure_filename
 from gevent.pywsgi import WSGIServer
+from flask_cors import CORS
+
 # Mongo
 import pymongo
 from pymongo import MongoClient
@@ -53,7 +55,7 @@ train_dict = dict()
 
 # Declare a flask app
 app = Flask(__name__)
-
+CORS(app)
 # Constant
 # DUMPED_MODEL = 'models/'
 # JOB_QUEUE = 'job_queue'
