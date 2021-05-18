@@ -76,8 +76,7 @@ class Publisher:
 
         try:
             self._publish(msg)
-        except (pika.exceptions.ConnectionClosed,
-                pika.exceptions.StreamLostError) as e:
+        except (Exception) as e:
             logging.debug('reconnecting to queue')
             self.connect()
             self._publish(msg)
