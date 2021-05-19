@@ -107,7 +107,7 @@ def train_caser(customer_id):
             train_collection = db.train
             data = list(sequences.find({"customer": ObjectId(customer_id)}))
             user_ids = list(set(map(lambda row: row['userId'], data)))
-
+            print('data',  data, customer_id)
             user_key = dict()
             for user_id in tqdm(user_ids):
                 user_key[user_id] = list()
@@ -127,10 +127,13 @@ def train_caser(customer_id):
             train = Interactions(train_list)
             test = Interactions(test_list)
             train.to_sequence(5, 3)
-            inserted = train_collection.insert_many(train_list)
+            # print(train)
+            with open('caching_sequnce_' + customer_id + '.json', 'w') as outfile:
+                json.dump(train_list, outfile)
+            # inserted = train_collection.insert_many(train_list)
             # train_data.set_data(customer_id, train)
 
-            model = Recommender(n_iter=50,
+            model = Recommender(n_iter=5,
                                 batch_size=512,
                                 learning_rate=1e-3,
                                 l2=1e-6,
@@ -256,6 +259,7 @@ def callback(ch, method, properties, body):
         print(" [x] Sent to {0}: complete_{1}".format(STATUS_QUEUE, user_id))
 
 app = Flask(__name__)
+
 
 if __name__ == '__main__':
     # app.run(port=5002, threaded=False)

@@ -324,35 +324,58 @@ def index():
     try:
         db = getDb()
         if (db):
-            contents = db.contents
-            # customer_id = request.args.get('customer_id', default='')
-            # # item_id = request.args.get('item_id', default='')
-            # top = request.args.get('top', default=10)
-            # # product = contents.find_one({'itemId': item_id})
+            customer_id = '60a34ac56e2c8b00201b3217' 
+            print("### Start training")
+            model_config = argparse.Namespace()
+            model_config.d = 50
+            model_config.nv = 4
+            model_config.nh = 16
+            model_config.drop = 0.5
+            model_config.ac_conv = 'relu'
+            model_config.ac_fc = 'relu'
+            model_config.L = 5
+            print("config", model_config)
 
-            # data = pd.DataFrame(
-            #         list(contents.find({'customer': ObjectId(customer_id)})))
-            # tf = TfidfVectorizer(analyzer='word',
-            #                      ngram_range=(1, 3),
-            #                      min_df=0,
-            #                      stop_words=None)
-            # matrix = tf.fit_transform(data['content'])
-            # model = KMeans(n_clusters=8, init='k-means++', max_iter=500, n_init=15)
-            # kmeans = model.fit(matrix)
+            sequences = db.sequences
+            train_collection = db.train
+            data = list(sequences.find({"customer": ObjectId(customer_id)}))
+            # sequences.delete_many({"customer": ObjectId(customer_id)})
+            user_ids = list(set(map(lambda row: row['userId'], data)))
+            print('data',  data, customer_id)
+            user_key = dict()
+            for user_id in tqdm(user_ids):
+                user_key[user_id] = list()
+                for row in data:
+                    if (row['userId'] == user_id):
+                        user_key[user_id].append(row)
 
-            # # print("Top terms per cluster:", label)
-            # # order_centroids = model.cluster_centers_.argsort()[:, ::-1]
-            # # terms = tf.get_feature_names()
-            # # for i in range(8):
-            # #     print("Cluster %d:" % i),
-            # #     for ind in order_centroids[i, :15]:
-            # #         print(' %s' % terms[ind]),
-            # #     print
-            # plt.scatter(kmeans.cluster_centers_[:,0] ,kmeans.cluster_centers_[:,1], color='black')
-            # plt.savefig("kmean.png")
-            response = jsonify(message="recommedation api")
-            response.headers.add("Access-Control-Allow-Origin", "*")
-            return response
+            train_list = list()
+            test_list = list()
+            for user_id in tqdm(user_ids):
+                user_data = list(user_key[user_id])
+                if (len(user_data) > 1):
+                    test_list.append(user_data.pop(-1))
+                    for x in user_data:
+                        train_list.append(x)
+
+            train = Interactions(train_list)
+            test = Interactions(test_list)
+            train.to_sequence(5, 3)
+            # inserted = train_collection.insert_many(train_list)
+            # train_data.set_data(customer_id, train)
+
+            model = Recommender(n_iter=5,
+                                batch_size=512,
+                                learning_rate=1e-3,
+                                l2=1e-6,
+                                neg_samples=3,
+                                model_args=model_config,
+                                use_cuda=False)
+
+            model.fit(train, test, verbose=True)
+            file_path = 'models/' + str(customer_id) + '_sequence'
+            torch.save(model._net.state_dict(), file_path)
+            print("### Training complete")
 
     except Exception as e:
         return "Error in " + str(e)
