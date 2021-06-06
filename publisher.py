@@ -26,7 +26,8 @@ class Publisher:
         self._params = pika.connection.ConnectionParameters(
             host=host,
             virtual_host=virtual_host,
-            credentials=pika.credentials.PlainCredentials(username, password))
+            credentials=pika.credentials.PlainCredentials(username, password),
+            heartbeat=3600)
         self._conn = None
         self._channel = None
         self.QUEUE = queue

@@ -11,7 +11,6 @@ import urllib.parse
 from flask import Flask, redirect, url_for, request, render_template, Response, jsonify, redirect
 from werkzeug.utils import secure_filename
 from gevent.pywsgi import WSGIServer
-from train_data import train_data
 # Mongo
 import pymongo
 from pymongo import MongoClient
@@ -38,8 +37,10 @@ from scipy.sparse.linalg import spsolve
 import pickle
 from util import base64_to_pil
 # import caser
-from caser.train_caser import Recommender
+from caser_pytorch.train_caser import Recommender
 from caser.interactions import Interactions
+# from caser.train_caser import Recommender
+# from caser.interactions import Interactions
 import torch.optim as optim
 import torch
 from torch.autograd import Variable
@@ -93,47 +94,81 @@ def train_caser(customer_id):
         db = getDb()
         if (db):
             print("### Start training")
-            model_config = argparse.Namespace()
-            model_config.d = 50
-            model_config.nv = 4
-            model_config.nh = 16
-            model_config.drop = 0.5
-            model_config.ac_conv = 'relu'
-            model_config.ac_fc = 'relu'
-            model_config.L = 5
-            print("config", model_config)
+            # inserted = train_collection.insert_many(train_list)
+            parser = argparse.ArgumentParser()
+            parser.add_argument(
+                '--train_root',
+                type=str,
+                default='caser_pytorch/datasets/ml1m/test/train.txt')
+            parser.add_argument(
+                '--test_root',
+                type=str,
+                default='caser_pytorch/datasets/ml1m/test/test.txt')
+            parser.add_argument('--L', type=int, default=5)
+            parser.add_argument('--T', type=int, default=3)
+            # train arguments
+            parser.add_argument('--n_iter', type=int, default=5)
+            parser.add_argument('--seed', type=int, default=1234)
+            parser.add_argument('--batch_size', type=int, default=512)
+            parser.add_argument('--learning_rate', type=float, default=1e-3)
+            parser.add_argument('--l2', type=float, default=1e-6)
+            parser.add_argument('--neg_samples', type=int, default=3)
+
+            config = parser.parse_args()
+
+            # model dependent arguments
+            model_parser = argparse.ArgumentParser()
+            model_parser.add_argument('--d', type=int, default=50)
+            model_parser.add_argument('--nv', type=int, default=4)
+            model_parser.add_argument('--nh', type=int, default=16)
+            model_parser.add_argument('--drop', type=float, default=0.5)
+            model_parser.add_argument('--ac_conv', type=str, default='relu')
+            model_parser.add_argument('--ac_fc', type=str, default='relu')
+
+            model_config = model_parser.parse_args()
+            model_config.L = config.L
 
             sequences = db.sequences
             train_collection = db.train
-            data = list(sequences.find({"customer": ObjectId(customer_id)}))
+            data = list(
+                sequences.find({"customer": ObjectId(customer_id)}, {
+                    '_id': False,
+                    'customer': False,
+                    'feedBack': False,
+                    'createdAt': False,
+                    'updatedAt': False,
+                    'date': False
+                }).sort('date', 1))
             user_ids = list(set(map(lambda row: row['userId'], data)))
-            print('data',  data, customer_id)
             user_key = dict()
-            for user_id in tqdm(user_ids):
-                user_key[user_id] = list()
-                for row in data:
-                    if (row['userId'] == user_id):
-                        user_key[user_id].append(row)
+
+            for user_id in user_ids:
+                user_key[user_id] = set()
+
+            for row in data:
+                user_key[row['userId']].add(json.dumps(row))
 
             train_list = list()
             test_list = list()
-            for user_id in tqdm(user_ids):
-                user_data = list(user_key[user_id])
-                if (len(user_data) > 1):
-                    test_list.append(user_data.pop(-1))
+            
+
+            for user_id in user_ids:
+                if (len(user_key[user_id]) > 1):
+                    user_data = user_key[user_id]
+                    test_list.append(json.loads(user_data.pop()))
                     for x in user_data:
-                        train_list.append(x)
+                        train_list.append(json.loads(x))
+            # load dataset
+            inserted = train_collection.insert_many(train_list)
 
             train = Interactions(train_list)
-            test = Interactions(test_list)
-            train.to_sequence(5, 3)
-            # print(train)
-            with open('caching_sequnce_' + customer_id + '.json', 'w') as outfile:
-                json.dump(train_list, outfile)
-            # inserted = train_collection.insert_many(train_list)
-            # train_data.set_data(customer_id, train)
+            # # transform triplets to sequence representation
+            train.to_sequence(config.L, config.T)
 
-            model = Recommender(n_iter=5,
+            test = Interactions(test_list,
+                                user_map=train.user_map,
+                                item_map=train.item_map)
+            model = Recommender(n_iter=50,
                                 batch_size=512,
                                 learning_rate=1e-3,
                                 l2=1e-6,
@@ -144,11 +179,6 @@ def train_caser(customer_id):
             model.fit(train, test, verbose=True)
             file_path = 'models/' + str(customer_id) + '_sequence'
             torch.save(model._net.state_dict(), file_path)
-            print("### Training complete")
-            # channel.basic_publish('', STATUS_QUEUE,
-            #                       'complete|' + user_id + '|sequence')
-            # print(" [x] Sent to {0}: complete_{1}".format(
-            #     STATUS_QUEUE, user_id))
         else:
             raise Exception("Database not found")
     except:
@@ -253,10 +283,10 @@ def callback(ch, method, properties, body):
         ch.basic_ack(method.delivery_tag)
 
     if (algorithm == 'sequence'):
-        ch.basic_ack(method.delivery_tag)
         train_caser(user_id)
         publisher.publish('complete|' + user_id + '|sequence')
         print(" [x] Sent to {0}: complete_{1}".format(STATUS_QUEUE, user_id))
+        ch.basic_ack(method.delivery_tag)
 
 app = Flask(__name__)
 
