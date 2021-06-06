@@ -37,7 +37,7 @@ from scipy.sparse.linalg import spsolve
 import pickle
 from util import base64_to_pil
 # import caser
-from caser_pytorch.train_caser import Recommender
+from caser.train_caser import Recommender
 from caser.interactions import Interactions
 # from caser.train_caser import Recommender
 # from caser.interactions import Interactions
