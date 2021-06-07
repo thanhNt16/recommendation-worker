@@ -143,10 +143,10 @@ def train_caser(customer_id):
             user_key = dict()
 
             for user_id in user_ids:
-                user_key[user_id] = set()
+                user_key[user_id] = list()
 
             for row in data:
-                user_key[row['userId']].add(json.dumps(row))
+                user_key[row['userId']].append(json.dumps(row))
 
             train_list = list()
             test_list = list()
@@ -155,12 +155,12 @@ def train_caser(customer_id):
             for user_id in user_ids:
                 if (len(user_key[user_id]) > 1):
                     user_data = user_key[user_id]
-                    test_list.append(json.loads(user_data.pop()))
+                    test_list.append(json.loads(user_data.pop(-1)))
                     for x in user_data:
                         train_list.append(json.loads(x))
             # load dataset
             # print(len(train_list))
-
+            print(train_list)
             # inserted = train_collection.insert_many(train_list)
 
             train = Interactions(train_list)
@@ -285,10 +285,10 @@ def callback(ch, method, properties, body):
         ch.basic_ack(method.delivery_tag)
 
     if (algorithm == 'sequence'):
-        ch.basic_ack(method.delivery_tag)
         train_caser(user_id)
         publisher.publish('complete|' + user_id + '|sequence')
         print(" [x] Sent to {0}: complete_{1}".format(STATUS_QUEUE, user_id))
+        ch.basic_ack(method.delivery_tag)
 
 app = Flask(__name__)
 

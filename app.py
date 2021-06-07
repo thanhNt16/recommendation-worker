@@ -696,14 +696,15 @@ def recommend_sequence():
                     'updatedAt': False,
                     'date': False
                 }).sort('date', 1))
+            print('data', len(data))
             user_ids = list(set(map(lambda row: row['userId'], data)))
             user_key = dict()
 
             for user_id in user_ids:
-                user_key[user_id] = set()
+                user_key[user_id] = list()
 
             for row in data:
-                user_key[row['userId']].add(json.dumps(row))
+                user_key[row['userId']].append(json.dumps(row))
 
             train_list = list()
             test_list = list()
@@ -712,7 +713,7 @@ def recommend_sequence():
             for user_id in user_ids:
                 if (len(user_key[user_id]) > 1):
                     user_data = user_key[user_id]
-                    test_list.append(json.loads(user_data.pop()))
+                    test_list.append(json.loads(user_data.pop(-1)))
                     for x in user_data:
                         train_list.append(json.loads(x))
             # {'customer': ObjectId(customer_id)}
