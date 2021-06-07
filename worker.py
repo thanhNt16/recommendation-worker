@@ -159,7 +159,9 @@ def train_caser(customer_id):
                     for x in user_data:
                         train_list.append(json.loads(x))
             # load dataset
-            inserted = train_collection.insert_many(train_list)
+            # print(len(train_list))
+
+            # inserted = train_collection.insert_many(train_list)
 
             train = Interactions(train_list)
             # # transform triplets to sequence representation
@@ -283,10 +285,10 @@ def callback(ch, method, properties, body):
         ch.basic_ack(method.delivery_tag)
 
     if (algorithm == 'sequence'):
+        ch.basic_ack(method.delivery_tag)
         train_caser(user_id)
         publisher.publish('complete|' + user_id + '|sequence')
         print(" [x] Sent to {0}: complete_{1}".format(STATUS_QUEUE, user_id))
-        ch.basic_ack(method.delivery_tag)
 
 app = Flask(__name__)
 

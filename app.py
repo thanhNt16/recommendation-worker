@@ -683,10 +683,41 @@ def recommend_sequence():
         if (db):
             customer_id = request.args.get('customer_id', default='')
             top = request.args.get('top', default='')
-            user_id = request.args.get('user_id', default='')
+            userId = request.args.get('user_id', default='')
             train_collection = db.train
-            train_list = list(
-                train_collection.find({'customer': ObjectId(customer_id)}))
+            sequences = db.sequences
+
+            data = list(
+                sequences.find({"customer": ObjectId(customer_id)}, {
+                    '_id': False,
+                    'customer': False,
+                    'feedBack': False,
+                    'createdAt': False,
+                    'updatedAt': False,
+                    'date': False
+                }).sort('date', 1))
+            user_ids = list(set(map(lambda row: row['userId'], data)))
+            user_key = dict()
+
+            for user_id in user_ids:
+                user_key[user_id] = set()
+
+            for row in data:
+                user_key[row['userId']].add(json.dumps(row))
+
+            train_list = list()
+            test_list = list()
+            
+
+            for user_id in user_ids:
+                if (len(user_key[user_id]) > 1):
+                    user_data = user_key[user_id]
+                    test_list.append(json.loads(user_data.pop()))
+                    for x in user_data:
+                        train_list.append(json.loads(x))
+            # {'customer': ObjectId(customer_id)}
+            # train_list = list(
+            #     train_collection.find())
             train = Interactions(train_list)
             train.to_sequence(5, 3)
 
@@ -709,8 +740,9 @@ def recommend_sequence():
             model._initialize(train)
             model._net.load_state_dict(
                 torch.load('models/' + customer_id + '_sequence'))
-            userid = train.user_map[user_id]
-            print("user", user_id)
+
+            userid = train.user_map[userId]
+
             scores = model.predict(userid)
             item_ids = np.unique(train.item_ids)
             result = list()
@@ -726,7 +758,7 @@ def recommend_sequence():
             response = jsonify(
                 data={
                     'current_user': {
-                        'id': user_id,
+                        'id': userId,
                     },
                     'suggestion': result[-int(top):],
                     'top': int(top)
