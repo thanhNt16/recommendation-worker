@@ -348,34 +348,34 @@ def sentiment():
     uploaded_file = request.files['file']
     if uploaded_file.filename != '':
         if ('.csv' in uploaded_file.filename):
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'],
-                                     uploaded_file.filename)
-            uploaded_file.save(file_path)
-            df = pd.read_csv(file_path, usecols=range(1), lineterminator='\n')
-            df.replace(',', '', regex=True, inplace=True)
-            df.replace('\n', '', regex=True, inplace=True)
-            df.replace('\r', '', regex=True, inplace=True)
+            try:
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'],
+                                        uploaded_file.filename)
+                print('file', file_path)
+                uploaded_file.save(file_path)
+                df = pd.read_csv(file_path, usecols=range(1), lineterminator='\n')
+                df.replace(',', '', regex=True, inplace=True)
+                df.replace('\n', '', regex=True, inplace=True)
+                df.replace('\r', '', regex=True, inplace=True)
 
-            df.dropna(inplace=True)
-            df.drop_duplicates(inplace=True)
-            column = df.columns[0].replace('\n', '')
-            column = df.columns[0].replace('\r', '')
-            df.columns = [column]
+                df.dropna(inplace=True)
+                df.drop_duplicates(inplace=True)
+                column = df.columns[0].replace('\n', '')
+                column = df.columns[0].replace('\r', '')
+                df.columns = [column]
 
-            reviews = df[column].to_list()
-            results = classifier(reviews)
-            
-            df['review'] = list(map(lambda item : item['label'].replace('stars', '').replace('star', ''), results))
+                reviews = df[column].to_list()
+                results = classifier(reviews)
+                
+                df['review'] = list(map(lambda item : item['label'].replace('stars', '').replace('star', ''), results))
 
-            df.to_csv(file_path, index=False)
-            return file_path
-            # for index, review in enumerate(reviews):
-            #     result = classifier(review)
-            #     df['review'][index] = result[0]
-            # print(df.head(5))
-            # return df.to_json()
+                print(df.head(20))
+                df.to_csv(file_path, index=False)
+                return file_path
+            except:
+                return "Please check again the data format in the instruction"
         else:
-            return "Please prodive file in .csv format"
+            return "Please provide file in .csv format"
 
 
 @app.route('/popular', methods=['GET'])
