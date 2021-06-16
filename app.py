@@ -368,8 +368,8 @@ def sentiment():
                 results = classifier(reviews)
                 
                 df['review'] = list(map(lambda item : item['label'].replace('stars', '').replace('star', ''), results))
-
-                print(df.head(20))
+                for index, review in enumerate(reviews):
+                    print(review[0:30], results[index])
                 df.to_csv(file_path, index=False)
                 return file_path
             except:
