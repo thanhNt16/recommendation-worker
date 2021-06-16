@@ -7,10 +7,11 @@ from tqdm import tqdm
 from threading import Thread
 import urllib.parse
 # Flask
-from flask import Flask, redirect, url_for, request, render_template, Response, jsonify, redirect
+from flask import Flask, redirect, url_for, request, render_template, Response, jsonify, redirect, send_from_directory
 from werkzeug.utils import secure_filename
 from gevent.pywsgi import WSGIServer
 from flask_cors import CORS
+from transformers import pipeline, AutoTokenizer
 
 # Mongo
 import pymongo
@@ -83,6 +84,10 @@ class JSONEncoder(json.JSONEncoder):
         if isinstance(o, ObjectId):
             return str(o)
         return json.JSONEncoder.default(self, o)
+
+
+classifier = pipeline("sentiment-analysis",
+                      'nlptown/bert-base-multilingual-uncased-sentiment')
 
 
 def train_caser(customer_id):
@@ -327,6 +332,50 @@ def index():
 
     except Exception as e:
         return "Error in " + str(e)
+
+
+# Upload folder
+UPLOAD_FOLDER = 'static/files'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+@app.route('/' + app.config['UPLOAD_FOLDER'] + '/<path:filename>', methods=['GET'])
+def serve_static(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+@app.route('/sentiment', methods=['POST'])
+def sentiment():
+    review = request.form.get('review')
+    uploaded_file = request.files['file']
+    if uploaded_file.filename != '':
+        if ('.csv' in uploaded_file.filename):
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'],
+                                     uploaded_file.filename)
+            uploaded_file.save(file_path)
+            df = pd.read_csv(file_path, usecols=range(1), lineterminator='\n')
+            df.replace(',', '', regex=True, inplace=True)
+            df.replace('\n', '', regex=True, inplace=True)
+            df.replace('\r', '', regex=True, inplace=True)
+
+            df.dropna(inplace=True)
+            df.drop_duplicates(inplace=True)
+            column = df.columns[0].replace('\n', '')
+            column = df.columns[0].replace('\r', '')
+            df.columns = [column]
+
+            reviews = df[column].to_list()
+            results = classifier(reviews)
+            
+            df['review'] = list(map(lambda item : item['label'].replace('stars', '').replace('star', ''), results))
+
+            df.to_csv(file_path, index=False)
+            return file_path
+            # for index, review in enumerate(reviews):
+            #     result = classifier(review)
+            #     df['review'][index] = result[0]
+            # print(df.head(5))
+            # return df.to_json()
+        else:
+            return "Please prodive file in .csv format"
 
 
 @app.route('/popular', methods=['GET'])
@@ -575,7 +624,9 @@ def recommend_sequence():
             sequences = db.sequences
 
             data = list(
-                sequences.find({"customer": ObjectId(customer_id)}, {
+                sequences.find({
+                    "customer": ObjectId(customer_id)
+                }, {
                     '_id': False,
                     'customer': False,
                     'feedBack': False,
@@ -595,7 +646,6 @@ def recommend_sequence():
 
             train_list = list()
             test_list = list()
-            
 
             for user_id in user_ids:
                 if (len(user_key[user_id]) > 1):
